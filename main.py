@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.mongodb import MongoDB
 from app.api.v1.router import api_router
+from app.services.upstox_service import upstox_service
 
 
 @asynccontextmanager
@@ -13,6 +14,10 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting TradeLit API...")
     await MongoDB.connect_db()
+
+    # Load Upstox token from database
+    await upstox_service.load_token_from_db()
+
     yield
     # Shutdown
     print("👋 Shutting down TradeLit API...")

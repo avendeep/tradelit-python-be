@@ -71,11 +71,12 @@ API documentation: `http://localhost:8000/docs`
 
 ## 🔐 Upstox Integration
 
-TradeLit now includes full Upstox broker API integration for live trading. See **[UPSTOX_QUICKSTART.md](UPSTOX_QUICKSTART.md)** for complete setup guide.
+TradeLit now includes full Upstox broker API integration for live trading with **persistent authentication** that survives server restarts.
 
 **Quick Links:**
 
 - **[Quick Start Guide](UPSTOX_QUICKSTART.md)** - Get started in 5 minutes
+- **[Token Persistence](TOKEN_PERSISTENCE.md)** - How authentication persistence works 🆕
 - **[Detailed Documentation](UPSTOX_INTEGRATION.md)** - Complete integration guide
 - Test your setup: `python test_upstox_setup.py`
 
@@ -83,5 +84,7 @@ TradeLit now includes full Upstox broker API integration for live trading. See *
 
 - OAuth 2.0 authentication flow
 - Token management with auto-validation
+- **MongoDB token persistence** - Stay authenticated across restarts 🆕
+- **Auto-load on startup** - Tokens loaded automatically 🆕
 - User profile access
 - Pre-configured API client for Upstox SDK

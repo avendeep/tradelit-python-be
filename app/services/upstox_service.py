@@ -10,6 +10,7 @@ import requests
 from datetime import datetime, timedelta
 
 from app.core.config import settings
+from app.db.mongodb import MongoDB
 
 
 class UpstoxService:
@@ -23,6 +24,84 @@ class UpstoxService:
         self.token_url = settings.UPSTOX_TOKEN_URL
         self._access_token: Optional[str] = None
         self._token_expiry: Optional[datetime] = None
+        self._collection_name = "upstox_tokens"
+
+    async def load_token_from_db(self) -> bool:
+        """
+        Load access token from database on startup
+
+        Returns:
+            True if token was loaded and is valid, False otherwise
+        """
+        try:
+            collection = MongoDB.get_collection(self._collection_name)
+            token_doc = await collection.find_one({"_id": "upstox_token"})
+
+            if token_doc:
+                self._access_token = token_doc.get("access_token")
+                expires_at_str = token_doc.get("expires_at")
+
+                # Parse datetime string
+                if isinstance(expires_at_str, str):
+                    self._token_expiry = datetime.fromisoformat(expires_at_str)
+                elif isinstance(expires_at_str, datetime):
+                    self._token_expiry = expires_at_str
+
+                # Check if token is still valid
+                if self.is_token_valid():
+                    print(
+                        f"✅ Loaded valid Upstox token from database (expires: {self._token_expiry})"
+                    )
+                    return True
+                else:
+                    print("⚠️  Token loaded from database but has expired")
+                    self._access_token = None
+                    self._token_expiry = None
+                    return False
+            else:
+                print("ℹ️  No Upstox token found in database")
+                return False
+
+        except Exception as e:
+            print(f"❌ Error loading token from database: {str(e)}")
+            return False
+
+    async def save_token_to_db(self, token_data: Dict[str, Any]) -> bool:
+        """
+        Save access token to database for persistence
+
+        Args:
+            token_data: Token data including access_token, expires_in, etc.
+
+        Returns:
+            True if saved successfully, False otherwise
+        """
+        try:
+            collection = MongoDB.get_collection(self._collection_name)
+
+            # Prepare document
+            token_doc = {
+                "_id": "upstox_token",
+                "access_token": token_data["access_token"],
+                "token_type": token_data.get("token_type", "Bearer"),
+                "expires_in": token_data["expires_in"],
+                "expires_at": token_data["expires_at"],
+                "updated_at": datetime.now().isoformat(),
+            }
+
+            # Upsert (update or insert)
+            await collection.replace_one(
+                {"_id": "upstox_token"}, token_doc, upsert=True
+            )
+
+            print(
+                f"✅ Saved Upstox token to database (expires: {token_data['expires_at']})"
+            )
+            return True
+
+        except Exception as e:
+            print(f"❌ Error saving token to database: {str(e)}")
+            return False
 
     def get_login_url(self, state: Optional[str] = None) -> str:
         """
@@ -85,12 +164,17 @@ class UpstoxService:
             expires_in = token_data.get("expires_in", 86400)  # Default 24 hours
             self._token_expiry = datetime.now() + timedelta(seconds=expires_in)
 
-            return {
+            result = {
                 "access_token": self._access_token,
                 "expires_in": expires_in,
                 "token_type": token_data.get("token_type", "Bearer"),
                 "expires_at": self._token_expiry.isoformat(),
             }
+
+            # Save token to database for persistence
+            await self.save_token_to_db(result)
+
+            return result
 
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to generate access token: {str(e)}")
@@ -145,6 +229,22 @@ class UpstoxService:
         """Revoke the current access token"""
         self._access_token = None
         self._token_expiry = None
+
+    async def delete_token_from_db(self) -> bool:
+        """
+        Delete access token from database
+
+        Returns:
+            True if deleted successfully, False otherwise
+        """
+        try:
+            collection = MongoDB.get_collection(self._collection_name)
+            await collection.delete_one({"_id": "upstox_token"})
+            print("✅ Deleted Upstox token from database")
+            return True
+        except Exception as e:
+            print(f"❌ Error deleting token from database: {str(e)}")
+            return False
 
 
 # Singleton instance

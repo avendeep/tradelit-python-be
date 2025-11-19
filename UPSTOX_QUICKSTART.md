@@ -119,6 +119,8 @@ This script will:
 
 ✅ **OAuth 2.0 Flow** - Complete authentication implementation
 ✅ **Token Management** - Automatic token validation and expiry tracking
+✅ **Token Persistence** - Tokens stored in MongoDB, survive server restarts 🆕
+✅ **Auto-Load on Startup** - Tokens automatically loaded when server starts 🆕
 ✅ **User Profile** - Fetch authenticated user information
 ✅ **State Parameter** - CSRF protection support
 ✅ **Error Handling** - Comprehensive error messages
@@ -153,7 +155,7 @@ if upstox_service.is_token_valid():
 
 3. **Token Validity**: Access tokens are valid for 24 hours (86400 seconds).
 
-4. **In-Memory Storage**: Currently tokens are stored in memory. For production, implement database storage.
+4. **Token Persistence**: Tokens are now stored in MongoDB and automatically loaded on server startup. Users remain authenticated across restarts (until token expires). 🆕
 
 5. **HTTPS Required**: In production, use HTTPS for all OAuth flows.
 
@@ -177,13 +179,14 @@ if upstox_service.is_token_valid():
 ## 📖 Next Steps
 
 1. **Test Authentication**: Use Swagger UI to test the complete flow
-2. **Implement Trading Features**: Add order placement, positions, holdings
-3. **Add WebSocket**: Implement real-time market data streaming
-4. **Database Integration**: Store tokens in MongoDB for persistence
-5. **Frontend Integration**: Build UI for seamless authentication
+2. **Verify Persistence**: Restart server and check that token is still valid 🆕
+3. **Implement Trading Features**: Add order placement, positions, holdings
+4. **Add WebSocket**: Implement real-time market data streaming
+5. **Multi-User Support**: Extend token storage for multiple users
 
 ## 📄 Documentation
 
+- **Token Persistence Guide**: `TOKEN_PERSISTENCE.md` 🆕
 - **Comprehensive Guide**: `UPSTOX_INTEGRATION.md`
 - **Upstox API Docs**: <https://upstox.com/developer/api-documentation/>
 - **Upstox Python SDK**: <https://github.com/upstox/upstox-python>

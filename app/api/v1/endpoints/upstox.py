@@ -125,9 +125,10 @@ async def upstox_logout():
     """
     Logout and revoke access token
 
-    Clears the stored access token from the service.
+    Clears the stored access token from the service and database.
     """
     upstox_service.revoke_token()
+    await upstox_service.delete_token_from_db()
     return {"message": "Logged out successfully"}
 
 
