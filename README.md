@@ -77,6 +77,7 @@ TradeLit now includes full Upstox broker API integration for live trading with *
 
 - **[Quick Start Guide](UPSTOX_QUICKSTART.md)** - Get started in 5 minutes
 - **[Token Persistence](TOKEN_PERSISTENCE.md)** - How authentication persistence works 🆕
+- **[Option Chain API](OPTION_CHAIN_API.md)** - Fetch option chains 🆕
 - **[Detailed Documentation](UPSTOX_INTEGRATION.md)** - Complete integration guide
 - Test your setup: `python test_upstox_setup.py`
 
@@ -86,5 +87,6 @@ TradeLit now includes full Upstox broker API integration for live trading with *
 - Token management with auto-validation
 - **MongoDB token persistence** - Stay authenticated across restarts 🆕
 - **Auto-load on startup** - Tokens loaded automatically 🆕
+- **Option Chain API** - Fetch complete put/call option chains 🆕
 - User profile access
 - Pre-configured API client for Upstox SDK

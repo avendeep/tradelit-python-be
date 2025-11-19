@@ -246,6 +246,48 @@ class UpstoxService:
             print(f"❌ Error deleting token from database: {str(e)}")
             return False
 
+    async def get_option_chain(
+        self, instrument_key: str, expiry_date: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get put/call option chain for an underlying symbol
+
+        Args:
+            instrument_key: Key of underlying symbol (e.g., 'NSE_INDEX|Nifty 50')
+            expiry_date: Expiry date in YYYY-MM-DD format
+
+        Returns:
+            Option chain data or None if request fails
+
+        Raises:
+            Exception: If not authenticated or request fails
+        """
+        if not self.is_token_valid():
+            raise Exception("Not authenticated. Please login first.")
+
+        url = "https://api.upstox.com/v2/option/chain"
+
+        params = {
+            "instrument_key": instrument_key,
+            "expiry_date": expiry_date,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self._access_token}",
+        }
+
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching option chain: {str(e)}")
+            if hasattr(e.response, "text"):
+                print(f"Response: {e.response.text}")
+            raise Exception(f"Failed to fetch option chain: {str(e)}")
+
 
 # Singleton instance
 upstox_service = UpstoxService()
