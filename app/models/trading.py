@@ -156,3 +156,32 @@ class InstrumentWatchlistModel(BaseModel):
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class OptionChainSnapshotModel(BaseModel):
+    """Database model for storing option chain snapshots"""
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        populate_by_name=True,
+        json_encoders={ObjectId: str},
+        json_schema_extra={
+            "example": {
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "expiry_date": "2024-03-28",
+                "timestamp": "2024-03-20T10:15:00",
+                "data": {},
+            }
+        },
+    )
+
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    instrument_key: str = Field(
+        ..., description="Key of underlying symbol (e.g., NSE_INDEX|Nifty 50)"
+    )
+    expiry_date: str = Field(..., description="Expiry date in YYYY-MM-DD format")
+    timestamp: datetime = Field(
+        ..., description="Timestamp of snapshot (without seconds, only hour and minute)"
+    )
+    data: dict = Field(..., description="Complete option chain data snapshot")
+    created_at: datetime = Field(default_factory=datetime.utcnow)

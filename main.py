@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.db.mongodb import MongoDB
 from app.api.v1.router import api_router
 from app.services.upstox_service import upstox_service
+from app.services.scheduler import scheduler_service
 
 
 @asynccontextmanager
@@ -18,9 +19,18 @@ async def lifespan(app: FastAPI):
     # Load Upstox token from database
     await upstox_service.load_token_from_db()
 
+    # Start scheduler and register tasks
+    scheduler_service.start()
+    scheduler_service.register_tasks()
+    print("⏰ Scheduler started with all tasks registered")
+
     yield
     # Shutdown
     print("👋 Shutting down TradeLit API...")
+
+    # Shutdown scheduler
+    scheduler_service.shutdown(wait=True)
+
     await MongoDB.close_db()
 
 
