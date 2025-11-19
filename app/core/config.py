@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # Upstox Configuration
     UPSTOX_API_KEY: str = "870baf4f-5a61-422f-a4b7-6132b40c679c"
     UPSTOX_API_SECRET: str = "kilkj3o63j"
-    UPSTOX_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/upstox/callback"
+    UPSTOX_REDIRECT_URI: str = "http://localhost:8000/api/v1/upstox/callback"
     UPSTOX_AUTH_URL: str = "https://api.upstox.com/v2/login/authorization/dialog"
     UPSTOX_TOKEN_URL: str = "https://api.upstox.com/v2/login/authorization/token"
 
