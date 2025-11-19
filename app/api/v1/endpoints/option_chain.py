@@ -3,14 +3,18 @@ Option Chain API endpoints
 """
 
 from fastapi import APIRouter, HTTPException, Query, status
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
 from app.schemas.option_chain import (
     OptionChainRequest,
     OptionChainResponse,
     OptionChainError,
 )
+from app.schemas.trading import InstrumentWatchlistCreate, InstrumentWatchlistResponse
+from app.models.trading import InstrumentWatchlistModel
 from app.services.upstox_service import upstox_service
+from app.db.mongodb import MongoDB
 
 
 router = APIRouter(prefix="/option-chain", tags=["Option Chain"])
@@ -91,6 +95,112 @@ async def get_option_chain(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to fetch option chain: {error_message}",
             )
+
+
+@router.post(
+    "/watchlist",
+    response_model=InstrumentWatchlistResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def save_instrument_watchlist(request: InstrumentWatchlistCreate):
+    """
+    Save instrument key and expiry date to watchlist
+
+    Stores instrument information in the database for quick access.
+    Use this to maintain a list of frequently monitored instruments.
+
+    **Example Request Body**:
+    ```json
+    {
+        "instrument_key": "NSE_INDEX|Nifty 50",
+        "expiry_date": "2024-03-28"
+    }
+    ```
+
+    **Returns**: Created watchlist entry with ID and timestamps
+    """
+    try:
+        # Create watchlist model instance
+        watchlist_entry = InstrumentWatchlistModel(
+            instrument_key=request.instrument_key,
+            expiry_date=request.expiry_date,
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        # Get database collection
+        collection = MongoDB.get_collection("instrument_watchlist")
+
+        # Insert into database
+        result = await collection.insert_one(
+            watchlist_entry.model_dump(by_alias=True, exclude={"id"})
+        )
+
+        # Fetch the created document
+        created_entry = await collection.find_one({"_id": result.inserted_id})
+
+        if not created_entry:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to retrieve created watchlist entry",
+            )
+
+        # Convert ObjectId to string for response
+        created_entry["id"] = str(created_entry["_id"])
+        del created_entry["_id"]
+
+        return InstrumentWatchlistResponse(**created_entry)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save watchlist entry: {str(e)}",
+        )
+
+
+@router.get("/watchlist", response_model=List[InstrumentWatchlistResponse])
+async def get_instrument_watchlist(
+    is_active: Optional[bool] = Query(None, description="Filter by active status")
+):
+    """
+    Get all saved instrument watchlist entries
+
+    Retrieves all instruments that have been saved to the watchlist.
+    Optionally filter by active status.
+
+    **Query Parameters**:
+    - `is_active`: Filter by active status (true/false). If not provided, returns all entries.
+
+    **Returns**: List of watchlist entries
+    """
+    try:
+        # Get database collection
+        collection = MongoDB.get_collection("instrument_watchlist")
+
+        # Build query filter
+        query_filter = {}
+        if is_active is not None:
+            query_filter["is_active"] = is_active
+
+        # Fetch watchlist entries
+        cursor = collection.find(query_filter).sort("created_at", -1)
+        entries = await cursor.to_list(length=None)
+
+        # Convert ObjectId to string for each entry
+        result = []
+        for entry in entries:
+            entry["id"] = str(entry["_id"])
+            del entry["_id"]
+            result.append(InstrumentWatchlistResponse(**entry))
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch watchlist entries: {str(e)}",
+        )
 
 
 # @router.post("", response_model=OptionChainResponse)

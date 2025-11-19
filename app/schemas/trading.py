@@ -121,3 +121,49 @@ class PortfolioResponse(BaseModel):
     cash_balance: float
     total_value: float
     updated_at: datetime
+
+
+class InstrumentWatchlistCreate(BaseModel):
+    """Schema for creating a new instrument watchlist entry"""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "expiry_date": "2024-03-28",
+            }
+        }
+    )
+
+    instrument_key: str = Field(
+        ..., description="Key of underlying symbol (e.g., NSE_INDEX|Nifty 50)"
+    )
+    expiry_date: str = Field(
+        ...,
+        description="Expiry date in YYYY-MM-DD format",
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+    )
+
+
+class InstrumentWatchlistResponse(BaseModel):
+    """Schema for instrument watchlist response"""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "507f1f77bcf86cd799439011",
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "expiry_date": "2024-03-28",
+                "is_active": True,
+                "created_at": "2025-11-10T10:30:00",
+                "updated_at": "2025-11-10T10:30:00",
+            }
+        }
+    )
+
+    id: str = Field(..., description="Watchlist entry ID")
+    instrument_key: str
+    expiry_date: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime

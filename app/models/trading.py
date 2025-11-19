@@ -128,3 +128,31 @@ class PortfolioModel(BaseModel):
     cash_balance: float = Field(default=0.0, description="Available cash balance")
     total_value: float = Field(default=0.0, description="Total portfolio value")
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class InstrumentWatchlistModel(BaseModel):
+    """Database model for instrument watchlist"""
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        populate_by_name=True,
+        json_encoders={ObjectId: str},
+        json_schema_extra={
+            "example": {
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "expiry_date": "2024-03-28",
+                "is_active": True,
+            }
+        },
+    )
+
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    instrument_key: str = Field(
+        ..., description="Key of underlying symbol (e.g., NSE_INDEX|Nifty 50)"
+    )
+    expiry_date: str = Field(..., description="Expiry date in YYYY-MM-DD format")
+    is_active: bool = Field(
+        default=True, description="Whether this watchlist entry is active"
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
