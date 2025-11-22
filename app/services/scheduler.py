@@ -105,12 +105,23 @@ class SchedulerService:
         Add new tasks here to keep them organized
         """
         from app.services.tasks.fetch_option_chain import fetch_option_chain_task
+        from app.services.tasks.trading_bot_analysis import trading_bot_analysis_task
 
         # Register option chain fetch task - runs every minute
         self.add_job(
             func=fetch_option_chain_task,
             job_id="fetch_option_chain",
             name="Fetch Option Chain Data",
+            trigger="cron",
+            minute="*",  # Every minute
+            # hour="9-15",  # Uncomment to run only during market hours (9 AM to 3 PM)
+        )
+
+        # Register trading bot analysis task - runs every minute
+        self.add_job(
+            func=trading_bot_analysis_task,
+            job_id="trading_bot_analysis",
+            name="Trading Bot OI Analysis",
             trigger="cron",
             minute="*",  # Every minute
             # hour="9-15",  # Uncomment to run only during market hours (9 AM to 3 PM)

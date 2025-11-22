@@ -185,3 +185,77 @@ class OptionChainSnapshotModel(BaseModel):
     )
     data: dict = Field(..., description="Complete option chain data snapshot")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class TradingBotModel(BaseModel):
+    """Database model for trading bot configuration and state"""
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        populate_by_name=True,
+        json_encoders={ObjectId: str},
+        json_schema_extra={
+            "example": {
+                "bot_id": "oi_analyzer_nifty",
+                "is_active": True,
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "expiry_date": "2024-03-28",
+                "lookback_minutes": 10,
+            }
+        },
+    )
+
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    bot_id: str = Field(..., description="Unique identifier for the bot")
+    is_active: bool = Field(default=False, description="Whether bot is active")
+    instrument_key: str = Field(
+        ..., description="Key of underlying symbol (e.g., NSE_INDEX|Nifty 50)"
+    )
+    expiry_date: str = Field(..., description="Expiry date in YYYY-MM-DD format")
+    lookback_minutes: int = Field(
+        default=10, description="Number of minutes to look back for OI analysis"
+    )
+    activated_at: Optional[datetime] = Field(
+        None, description="Timestamp when bot was activated"
+    )
+    deactivated_at: Optional[datetime] = Field(
+        None, description="Timestamp when bot was deactivated"
+    )
+    last_analysis_at: Optional[datetime] = Field(
+        None, description="Timestamp of last analysis"
+    )
+    total_analyses: int = Field(default=0, description="Total number of analyses run")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class OIAnalysisLogModel(BaseModel):
+    """Database model for storing OI analysis results"""
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        populate_by_name=True,
+        json_encoders={ObjectId: str},
+        json_schema_extra={
+            "example": {
+                "bot_id": "oi_analyzer_nifty",
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "expiry_date": "2024-03-28",
+                "analysis_result": {},
+            }
+        },
+    )
+
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    bot_id: str = Field(..., description="Bot that performed this analysis")
+    instrument_key: str = Field(
+        ..., description="Key of underlying symbol (e.g., NSE_INDEX|Nifty 50)"
+    )
+    expiry_date: str = Field(..., description="Expiry date in YYYY-MM-DD format")
+    timestamp: datetime = Field(..., description="Timestamp of analysis")
+    atm_strike: float = Field(..., description="ATM strike price at time of analysis")
+    spot_price: Optional[float] = Field(
+        None, description="Spot price at time of analysis"
+    )
+    analysis_result: dict = Field(..., description="Complete analysis result")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
