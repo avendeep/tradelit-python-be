@@ -15,6 +15,7 @@ from app.schemas.trading import InstrumentWatchlistCreate, InstrumentWatchlistRe
 from app.models.trading import InstrumentWatchlistModel
 from app.services.upstox_service import upstox_service
 from app.db.mongodb import MongoDB
+from app.core.config import settings
 
 
 router = APIRouter(prefix="/option-chain", tags=["Option Chain"])
@@ -100,14 +101,14 @@ async def get_option_chain(
 @router.post(
     "/watchlist",
     response_model=InstrumentWatchlistResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def save_instrument_watchlist(request: InstrumentWatchlistCreate):
     """
-    Save instrument key and expiry date to watchlist
+    Save or update instrument key and expiry date to watchlist
 
-    Stores instrument information in the database for quick access.
-    Use this to maintain a list of frequently monitored instruments.
+    Only one instrument can be in the watchlist at a time. If an instrument already exists,
+    it will be updated with the new data. Otherwise, a new entry is created.
 
     **Example Request Body**:
     ```json
@@ -117,40 +118,71 @@ async def save_instrument_watchlist(request: InstrumentWatchlistCreate):
     }
     ```
 
-    **Returns**: Created watchlist entry with ID and timestamps
+    **Returns**: Watchlist entry with ID and timestamps
     """
     try:
-        # Create watchlist model instance
-        watchlist_entry = InstrumentWatchlistModel(
-            instrument_key=request.instrument_key,
-            expiry_date=request.expiry_date,
-            is_active=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-
         # Get database collection
         collection = MongoDB.get_collection("instrument_watchlist")
 
-        # Insert into database
-        result = await collection.insert_one(
-            watchlist_entry.model_dump(by_alias=True, exclude={"id"})
-        )
+        # Check if any watchlist entry exists
+        existing_entry = await collection.find_one({})
 
-        # Fetch the created document
-        created_entry = await collection.find_one({"_id": result.inserted_id})
+        if existing_entry:
+            # Update existing entry
+            update_data = {
+                "instrument_key": request.instrument_key,
+                "expiry_date": request.expiry_date,
+                "is_active": True,
+                "updated_at": settings.now_naive(),
+            }
 
-        if not created_entry:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve created watchlist entry",
+            await collection.update_one(
+                {"_id": existing_entry["_id"]}, {"$set": update_data}
             )
 
-        # Convert ObjectId to string for response
-        created_entry["id"] = str(created_entry["_id"])
-        del created_entry["_id"]
+            # Fetch the updated document
+            updated_entry = await collection.find_one({"_id": existing_entry["_id"]})
 
-        return InstrumentWatchlistResponse(**created_entry)
+            if not updated_entry:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to retrieve updated watchlist entry",
+                )
+
+            # Convert ObjectId to string for response
+            updated_entry["id"] = str(updated_entry["_id"])
+            del updated_entry["_id"]
+
+            return InstrumentWatchlistResponse(**updated_entry)
+        else:
+            # Create new watchlist entry
+            watchlist_entry = InstrumentWatchlistModel(
+                instrument_key=request.instrument_key,
+                expiry_date=request.expiry_date,
+                is_active=True,
+                created_at=settings.now_naive(),
+                updated_at=settings.now_naive(),
+            )
+
+            # Insert into database
+            result = await collection.insert_one(
+                watchlist_entry.model_dump(by_alias=True, exclude={"id"})
+            )
+
+            # Fetch the created document
+            created_entry = await collection.find_one({"_id": result.inserted_id})
+
+            if not created_entry:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to retrieve created watchlist entry",
+                )
+
+            # Convert ObjectId to string for response
+            created_entry["id"] = str(created_entry["_id"])
+            del created_entry["_id"]
+
+            return InstrumentWatchlistResponse(**created_entry)
 
     except Exception as e:
         raise HTTPException(

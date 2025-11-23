@@ -86,7 +86,7 @@ class UpstoxService:
                 "token_type": token_data.get("token_type", "Bearer"),
                 "expires_in": token_data["expires_in"],
                 "expires_at": token_data["expires_at"],
-                "updated_at": datetime.now().isoformat(),
+                "updated_at": settings.now_naive().isoformat(),
             }
 
             # Upsert (update or insert)
@@ -159,10 +159,10 @@ class UpstoxService:
 
             token_data = response.json()
 
-            # Store access token and calculate expiry
+            # Store access token and calculate expiry in IST
             self._access_token = token_data.get("access_token")
             expires_in = token_data.get("expires_in", 86400)  # Default 24 hours
-            self._token_expiry = datetime.now() + timedelta(seconds=expires_in)
+            self._token_expiry = settings.now_naive() + timedelta(seconds=expires_in)
 
             result = {
                 "access_token": self._access_token,
@@ -180,10 +180,10 @@ class UpstoxService:
             raise Exception(f"Failed to generate access token: {str(e)}")
 
     def is_token_valid(self) -> bool:
-        """Check if the current access token is still valid"""
+        """Check if the current access token is still valid (uses IST)"""
         if not self._access_token or not self._token_expiry:
             return False
-        return datetime.now() < self._token_expiry
+        return settings.now_naive() < self._token_expiry
 
     def get_access_token(self) -> Optional[str]:
         """Get the current access token if valid"""

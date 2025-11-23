@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     upstox,
     option_chain,
     trading_bot,
+    scheduler,
 )
 
 api_router = APIRouter()
@@ -17,3 +18,6 @@ api_router.include_router(portfolio.router, prefix="/portfolio", tags=["Portfoli
 api_router.include_router(upstox.router)  # Upstox auth endpoints
 api_router.include_router(option_chain.router)  # Option chain endpoints
 api_router.include_router(trading_bot.router)  # Trading bot endpoints
+api_router.include_router(
+    scheduler.router, prefix="/scheduler", tags=["Scheduler"]
+)  # Scheduler management endpoints

@@ -14,6 +14,7 @@ from app.schemas.trading_bot import (
     StrikeOIAnalysis,
     TradingBotStatus,
 )
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +58,8 @@ class TradingBotService:
                 "instrument_key": instrument_key,
                 "expiry_date": expiry_date,
                 "lookback_minutes": lookback_minutes,
-                "activated_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
+                "activated_at": settings.now_naive(),
+                "updated_at": settings.now_naive(),
             }
 
             if existing_bot:
@@ -75,7 +76,7 @@ class TradingBotService:
                 logger.info(f"✅ Updated and activated bot: {bot_id}")
             else:
                 # Create new bot
-                bot_data["created_at"] = datetime.utcnow()
+                bot_data["created_at"] = settings.now_naive()
                 bot_data["total_analyses"] = 0
                 await collection.insert_one(bot_data)
                 logger.info(f"✅ Created and activated bot: {bot_id}")
@@ -111,8 +112,8 @@ class TradingBotService:
                 {
                     "$set": {
                         "is_active": False,
-                        "deactivated_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow(),
+                        "deactivated_at": settings.now_naive(),
+                        "updated_at": settings.now_naive(),
                     }
                 },
             )
@@ -236,6 +237,16 @@ class TradingBotService:
             total_call_oi_change = 0
             total_put_oi_change = 0
 
+            logger.info(f"\n{'='*80}")
+            logger.info(f"📊 OI ANALYSIS DETAILS for {bot_id}")
+            logger.info(f"{'='*80}")
+            logger.info(f"Instrument: {instrument_key}")
+            logger.info(f"Expiry: {expiry_date}")
+            logger.info(f"ATM Strike: {atm_strike} | Spot Price: {spot_price}")
+            logger.info(f"Lookback Period: {lookback_minutes} minutes")
+            logger.info(f"Strikes Analyzed: {strikes_to_analyze}")
+            logger.info(f"{'='*80}\n")
+
             for strike in strikes_to_analyze:
                 analysis = self._analyze_strike_oi(
                     strike, current_data, historical_data
@@ -245,6 +256,21 @@ class TradingBotService:
                     total_call_oi_change += analysis.call_oi_change or 0
                     total_put_oi_change += analysis.put_oi_change or 0
 
+                    # Log detailed strike analysis
+                    atm_marker = " ⭐ ATM" if strike == atm_strike else ""
+                    logger.info(f"Strike {strike}{atm_marker}:")
+                    logger.info(
+                        f"  📞 CALL OI: {analysis.call_oi_previous:>10,} → {analysis.call_oi_current:>10,} | Change: {analysis.call_oi_change:>+10,} ({analysis.call_oi_change_percent:>+6.2f}%)"
+                        if analysis.call_oi_change is not None
+                        else f"  📞 CALL OI: {analysis.call_oi_current:>10,}"
+                    )
+                    logger.info(
+                        f"  📗 PUT  OI: {analysis.put_oi_previous:>10,} → {analysis.put_oi_current:>10,} | Change: {analysis.put_oi_change:>+10,} ({analysis.put_oi_change_percent:>+6.2f}%)"
+                        if analysis.put_oi_change is not None
+                        else f"  📗 PUT  OI: {analysis.put_oi_current:>10,}"
+                    )
+                    logger.info("")
+
             # Calculate PCR (Put-Call Ratio)
             pcr_oi = None
             current_total_call_oi = sum(s.call_oi_current or 0 for s in strike_analyses)
@@ -252,14 +278,29 @@ class TradingBotService:
             if current_total_call_oi > 0:
                 pcr_oi = round(current_total_put_oi / current_total_call_oi, 4)
 
+            logger.info(f"{'='*80}")
+            logger.info(f"📊 SUMMARY")
+            logger.info(f"{'='*80}")
+            logger.info(f"Total Call OI Change: {total_call_oi_change:>+15,}")
+            logger.info(f"Total Put  OI Change: {total_put_oi_change:>+15,}")
+            logger.info(
+                f"Net OI Change (Put - Call): {(total_put_oi_change - total_call_oi_change):>+15,}"
+            )
+            logger.info(f"Current Total Call OI: {current_total_call_oi:>15,}")
+            logger.info(f"Current Total Put  OI: {current_total_put_oi:>15,}")
+            logger.info(f"PCR (Put-Call Ratio): {pcr_oi if pcr_oi else 'N/A'}")
+
             # Generate trading signal
             signal = self._generate_signal(
                 total_call_oi_change, total_put_oi_change, pcr_oi
             )
 
+            logger.info(f"\n🎯 SIGNAL: {signal}")
+            logger.info(f"{'='*80}\n")
+
             # Create analysis result
             result = OIAnalysisResult(
-                timestamp=datetime.utcnow(),
+                timestamp=settings.now_naive(),
                 instrument_key=instrument_key,
                 expiry_date=expiry_date,
                 atm_strike=atm_strike,
@@ -280,8 +321,8 @@ class TradingBotService:
                 {"bot_id": bot_id},
                 {
                     "$set": {
-                        "last_analysis_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow(),
+                        "last_analysis_at": settings.now_naive(),
+                        "updated_at": settings.now_naive(),
                     },
                     "$inc": {"total_analyses": 1},
                 },
@@ -322,8 +363,8 @@ class TradingBotService:
         try:
             collection = MongoDB.get_collection(self._snapshots_collection)
 
-            # Calculate target timestamp (without seconds)
-            target_time = datetime.utcnow() - timedelta(minutes=minutes_ago)
+            # Calculate target timestamp in IST (without seconds)
+            target_time = settings.now_naive() - timedelta(minutes=minutes_ago)
             target_time = target_time.replace(second=0, microsecond=0)
 
             # Find snapshot closest to target time

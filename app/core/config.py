@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from datetime import datetime
+import pytz
 
 
 class Settings(BaseSettings):
@@ -29,9 +31,24 @@ class Settings(BaseSettings):
     UPSTOX_AUTH_URL: str = "https://api.upstox.com/v2/login/authorization/dialog"
     UPSTOX_TOKEN_URL: str = "https://api.upstox.com/v2/login/authorization/token"
 
+    # Timezone Configuration
+    TIMEZONE: str = "Asia/Kolkata"  # Indian Standard Time (IST)
+
     class Config:
         env_file = ".env"
         case_sensitive = True
+
+    def get_timezone(self) -> pytz.timezone:
+        """Get the configured timezone object"""
+        return pytz.timezone(self.TIMEZONE)
+
+    def now(self) -> datetime:
+        """Get current datetime in configured timezone (IST)"""
+        return datetime.now(self.get_timezone())
+
+    def now_naive(self) -> datetime:
+        """Get current datetime in configured timezone as naive datetime (IST)"""
+        return datetime.now(self.get_timezone()).replace(tzinfo=None)
 
 
 @lru_cache()

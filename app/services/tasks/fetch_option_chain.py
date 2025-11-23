@@ -10,6 +10,7 @@ from typing import List, Dict, Any
 from app.db.mongodb import MongoDB
 from app.services.upstox_service import upstox_service
 from app.models.trading import OptionChainSnapshotModel
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -105,12 +106,12 @@ async def get_active_watchlist_entries() -> List[Dict[str, Any]]:
 
 def get_timestamp_without_seconds() -> datetime:
     """
-    Get current timestamp with seconds set to 0
+    Get current timestamp in IST with seconds set to 0
 
     Returns:
-        Datetime object with seconds set to 0
+        Datetime object in IST with seconds set to 0
     """
-    now = datetime.now()
+    now = settings.now_naive()  # Get current time in IST
     return now.replace(second=0, microsecond=0)
 
 

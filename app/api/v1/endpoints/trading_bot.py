@@ -2,53 +2,76 @@
 Trading Bot API endpoints
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 from typing import Dict, Any
 
 from app.schemas.trading_bot import (
-    TradingBotActivateRequest,
     TradingBotResponse,
     TradingBotStatus,
     OIAnalysisResult,
 )
 from app.services.trading_bot import trading_bot_service
+from app.db.mongodb import MongoDB
 
 router = APIRouter(prefix="/trading-bot", tags=["Trading Bot"])
 
 
 @router.post("/activate", response_model=TradingBotResponse)
-async def activate_bot(request: TradingBotActivateRequest):
+async def activate_bot(
+    lookback_minutes: int = Query(
+        default=10,
+        description="Number of minutes to look back for OI analysis",
+        ge=1,
+        le=60,
+    )
+):
     """
     Activate a trading bot for OI analysis
 
-    This will start analyzing Open Interest changes for the specified instrument.
+    This will start analyzing Open Interest changes for the instrument stored in the watchlist.
     The bot will analyze 3 strikes above and below the ATM strike every minute.
 
+    **Note**: An instrument must be saved to the watchlist before activating the bot.
+    Use the `/api/v1/option-chain/watchlist` endpoint to save an instrument.
+
     Args:
-        request: Bot activation request with instrument details
+        lookback_minutes: Number of minutes to look back for OI analysis (default: 10)
 
     Returns:
         Bot activation confirmation and configuration
     """
     try:
+        # Get instrument from watchlist
+        collection = MongoDB.get_collection("instrument_watchlist")
+        watchlist_entry = await collection.find_one({"is_active": True})
+
+        if not watchlist_entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No active instrument found in watchlist. Please add an instrument to the watchlist first using /api/v1/option-chain/watchlist endpoint.",
+            )
+
+        instrument_key = watchlist_entry["instrument_key"]
+        expiry_date = watchlist_entry["expiry_date"]
+
         # Generate bot ID based on instrument and expiry
-        bot_id = (
-            f"oi_bot_{request.instrument_key.replace('|', '_')}_{request.expiry_date}"
-        )
+        bot_id = f"oi_bot_{instrument_key.replace('|', '_')}_{expiry_date}"
 
         bot_data = await trading_bot_service.activate_bot(
             bot_id=bot_id,
-            instrument_key=request.instrument_key,
-            expiry_date=request.expiry_date,
-            lookback_minutes=request.lookback_minutes,
+            instrument_key=instrument_key,
+            expiry_date=expiry_date,
+            lookback_minutes=lookback_minutes,
         )
 
         return TradingBotResponse(
             status="success",
-            message=f"Trading bot activated successfully",
+            message=f"Trading bot activated successfully for {instrument_key}",
             data=bot_data,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

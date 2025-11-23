@@ -3,6 +3,7 @@ from datetime import datetime
 from bson import ObjectId
 from app.db.mongodb import MongoDB
 from app.models.trading import TradeModel, StrategyModel, PortfolioModel
+from app.core.config import settings
 
 
 class TradeService:
@@ -12,7 +13,7 @@ class TradeService:
     async def create_trade(trade_data: dict) -> TradeModel:
         """Create a new trade"""
         collection = MongoDB.get_collection("trades")
-        trade_data["timestamp"] = datetime.utcnow()
+        trade_data["timestamp"] = settings.now_naive()
         trade_data["status"] = trade_data.get("status", "PENDING")
 
         result = await collection.insert_one(trade_data)
@@ -53,7 +54,7 @@ class StrategyService:
     async def create_strategy(strategy_data: dict) -> StrategyModel:
         """Create a new strategy"""
         collection = MongoDB.get_collection("strategies")
-        now = datetime.utcnow()
+        now = settings.now_naive()
         strategy_data["created_at"] = now
         strategy_data["updated_at"] = now
 
@@ -84,7 +85,7 @@ class StrategyService:
     ) -> Optional[StrategyModel]:
         """Update a strategy"""
         collection = MongoDB.get_collection("strategies")
-        update_data["updated_at"] = datetime.utcnow()
+        update_data["updated_at"] = settings.now_naive()
 
         result = await collection.find_one_and_update(
             {"_id": ObjectId(strategy_id)}, {"$set": update_data}, return_document=True
@@ -116,7 +117,7 @@ class PortfolioService:
         """Create or update portfolio"""
         collection = MongoDB.get_collection("portfolios")
         portfolio_data["user_id"] = user_id
-        portfolio_data["updated_at"] = datetime.utcnow()
+        portfolio_data["updated_at"] = settings.now_naive()
 
         result = await collection.find_one_and_update(
             {"user_id": user_id},
