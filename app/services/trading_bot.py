@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any, Tuple
 
 from app.db.mongodb import MongoDB
-from app.models.trading import TradingBotModel, OIAnalysisLogModel
+from app.models.trading import TradingBotModel
 from app.schemas.trading_bot import (
     OIAnalysisResult,
     StrikeOIAnalysis,
@@ -25,7 +25,6 @@ class TradingBotService:
     def __init__(self):
         self._bots_collection = "trading_bots"
         self._snapshots_collection = "option_chain_snapshots"
-        self._analysis_logs_collection = "oi_analysis_logs"
 
     async def activate_bot(
         self,
@@ -313,9 +312,6 @@ class TradingBotService:
                 signal=signal,
             )
 
-            # Log analysis result
-            await self._log_analysis_result(bot_id, result)
-
             # Update bot last_analysis_at and increment total_analyses
             await collection.update_one(
                 {"bot_id": bot_id},
@@ -600,39 +596,6 @@ class TradingBotService:
         except Exception as e:
             logger.error(f"❌ Error generating signal: {str(e)}")
             return "NEUTRAL"
-
-    async def _log_analysis_result(self, bot_id: str, result: OIAnalysisResult) -> bool:
-        """
-        Log analysis result to database
-
-        Args:
-            bot_id: Bot identifier
-            result: Analysis result
-
-        Returns:
-            True if logged successfully
-        """
-        try:
-            collection = MongoDB.get_collection(self._analysis_logs_collection)
-
-            log_entry = OIAnalysisLogModel(
-                bot_id=bot_id,
-                instrument_key=result.instrument_key,
-                expiry_date=result.expiry_date,
-                timestamp=result.timestamp,
-                atm_strike=result.atm_strike,
-                spot_price=result.spot_price,
-                analysis_result=result.model_dump(),
-            )
-
-            log_dict = log_entry.model_dump(by_alias=True, exclude={"id"})
-            await collection.insert_one(log_dict)
-
-            return True
-
-        except Exception as e:
-            logger.error(f"❌ Error logging analysis result: {str(e)}")
-            return False
 
 
 # Singleton instance

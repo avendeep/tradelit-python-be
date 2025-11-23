@@ -7,6 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from typing import Callable, Optional
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -102,42 +103,60 @@ class SchedulerService:
         """
         Register all scheduled tasks
         This method should be called after starting the scheduler
-        Add new tasks here to keep them organized
+
+        IMPORTANT: fetch_option_chain is the primary task that must complete first.
+        All other tasks depend on option chain data being available in the database.
+        Tasks are orchestrated to run sequentially after fetch_option_chain completes.
         """
         from app.services.tasks.fetch_option_chain import fetch_option_chain_task
         from app.services.tasks.trading_bot_analysis import trading_bot_analysis_task
 
-        # Register option chain fetch task - runs every minute
+        async def orchestrated_task_runner():
+            """
+            Orchestrator that ensures fetch_option_chain runs first,
+            then executes dependent tasks only if data is successfully stored.
+            """
+            try:
+                logger.info("🚀 Starting orchestrated task execution...")
+
+                # Step 1: Fetch and store option chain data (PRIMARY TASK)
+                logger.info("📊 Step 1/2: Fetching option chain data...")
+                await fetch_option_chain_task()
+                logger.info("✅ Option chain fetch completed")
+
+                # Step 2: Run dependent tasks sequentially
+                logger.info("🤖 Step 2/2: Running dependent tasks...")
+
+                # Task 2a: Trading bot analysis (depends on option chain data)
+                try:
+                    await trading_bot_analysis_task()
+                except Exception as e:
+                    logger.error(f"❌ Error in trading_bot_analysis_task: {str(e)}")
+
+                # Add more dependent tasks here as needed
+                # Task 2b: Another task
+                # try:
+                #     await another_dependent_task()
+                # except Exception as e:
+                #     logger.error(f"❌ Error in another_dependent_task: {str(e)}")
+
+                logger.info("✅ All orchestrated tasks completed")
+
+            except Exception as e:
+                logger.error(f"❌ Error in orchestrated task runner: {str(e)}")
+
+        # Register the orchestrated task runner - runs every minute
         self.add_job(
-            func=fetch_option_chain_task,
-            job_id="fetch_option_chain",
-            name="Fetch Option Chain Data",
+            func=orchestrated_task_runner,
+            job_id="orchestrated_tasks",
+            name="Orchestrated Tasks (Option Chain → Dependent Tasks)",
             trigger="cron",
             minute="*",  # Every minute
             # hour="9-15",  # Uncomment to run only during market hours (9 AM to 3 PM)
         )
 
-        # Register trading bot analysis task - runs every minute
-        self.add_job(
-            func=trading_bot_analysis_task,
-            job_id="trading_bot_analysis",
-            name="Trading Bot OI Analysis",
-            trigger="cron",
-            minute="*",  # Every minute
-            # hour="9-15",  # Uncomment to run only during market hours (9 AM to 3 PM)
-        )
-
-        # Add more tasks here as needed
-        # Example:
-        # self.add_job(
-        #     func=another_task,
-        #     job_id="another_task_id",
-        #     name="Another Task Name",
-        #     trigger="cron",
-        #     minute="*/5",  # Every 5 minutes
-        # )
-
-        logger.info("✅ All scheduled tasks registered")
+        logger.info("✅ Orchestrated task pipeline registered")
+        logger.info("📋 Execution order: fetch_option_chain → trading_bot_analysis")
 
 
 # Singleton instance
