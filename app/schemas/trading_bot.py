@@ -27,6 +27,12 @@ class TradingBotConfig(BaseModel):
         ge=1,
         le=60,
     )
+    strikes_range: int = Field(
+        default=3,
+        description="Number of strikes above and below ATM to analyze",
+        ge=1,
+        le=10,
+    )
     analysis_interval_seconds: int = Field(
         default=60,
         description="Interval in seconds to analyze OI changes",
@@ -52,6 +58,12 @@ class TradingBotActivateRequest(BaseModel):
         description="Number of minutes to look back for OI analysis",
         ge=1,
         le=60,
+    )
+    strikes_range: int = Field(
+        default=3,
+        description="Number of strikes above and below ATM to analyze",
+        ge=1,
+        le=10,
     )
 
 
@@ -96,6 +108,7 @@ class TradingBotStatus(BaseModel):
     instrument_key: str
     expiry_date: str
     lookback_minutes: int
+    strikes_range: int
     activated_at: Optional[datetime] = None
     last_analysis_at: Optional[datetime] = None
     total_analyses: int = 0

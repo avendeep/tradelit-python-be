@@ -215,6 +215,9 @@ class TradingBotModel(BaseModel):
     lookback_minutes: int = Field(
         default=10, description="Number of minutes to look back for OI analysis"
     )
+    strikes_range: int = Field(
+        default=3, description="Number of strikes above and below ATM to analyze"
+    )
     activated_at: Optional[datetime] = Field(
         None, description="Timestamp when bot was activated"
     )

@@ -32,6 +32,7 @@ class TradingBotService:
         instrument_key: str,
         expiry_date: str,
         lookback_minutes: int = 10,
+        strikes_range: int = 3,
     ) -> Dict[str, Any]:
         """
         Activate a trading bot
@@ -57,6 +58,7 @@ class TradingBotService:
                 "instrument_key": instrument_key,
                 "expiry_date": expiry_date,
                 "lookback_minutes": lookback_minutes,
+                "strikes_range": strikes_range,
                 "activated_at": settings.now_naive(),
                 "updated_at": settings.now_naive(),
             }
@@ -72,20 +74,22 @@ class TradingBotService:
                         }
                     },
                 )
-                logger.info(f"✅ Updated and activated bot: {bot_id}")
+
             else:
                 # Create new bot
                 bot_data["created_at"] = settings.now_naive()
                 bot_data["total_analyses"] = 0
                 await collection.insert_one(bot_data)
-                logger.info(f"✅ Created and activated bot: {bot_id}")
+
 
             return {
                 "bot_id": bot_id,
                 "is_active": True,
                 "instrument_key": instrument_key,
                 "expiry_date": expiry_date,
+                "expiry_date": expiry_date,
                 "lookback_minutes": lookback_minutes,
+                "strikes_range": strikes_range,
                 "activated_at": bot_data["activated_at"].isoformat(),
             }
 
@@ -118,7 +122,7 @@ class TradingBotService:
             )
 
             if result.modified_count > 0:
-                logger.info(f"✅ Deactivated bot: {bot_id}")
+
                 return True
             else:
                 logger.warning(f"⚠️ Bot not found: {bot_id}")
@@ -151,6 +155,7 @@ class TradingBotService:
                 instrument_key=bot["instrument_key"],
                 expiry_date=bot["expiry_date"],
                 lookback_minutes=bot.get("lookback_minutes", 10),
+                strikes_range=bot.get("strikes_range", 3),
                 activated_at=bot.get("activated_at"),
                 last_analysis_at=bot.get("last_analysis_at"),
                 total_analyses=bot.get("total_analyses", 0),
@@ -199,8 +204,9 @@ class TradingBotService:
             instrument_key = bot["instrument_key"]
             expiry_date = bot["expiry_date"]
             lookback_minutes = bot.get("lookback_minutes", 10)
+            strikes_range = bot.get("strikes_range", 3)
 
-            logger.info(f"🔍 Analyzing OI changes for {instrument_key} (Bot: {bot_id})")
+
 
             # Get current and historical option chain data
             current_data = await self._get_latest_snapshot(instrument_key, expiry_date)
@@ -224,11 +230,11 @@ class TradingBotService:
                 logger.warning(f"⚠️ Could not identify ATM strike for {instrument_key}")
                 return None
 
-            logger.info(f"📊 ATM Strike: {atm_strike}, Spot Price: {spot_price}")
 
-            # Get strikes to analyze (3 above and 3 below ATM)
+
+            # Get strikes to analyze (strikes_range above and below ATM)
             strikes_to_analyze = self._get_strikes_around_atm(
-                current_data, atm_strike, num_strikes=3
+                current_data, atm_strike, num_strikes=strikes_range
             )
 
             # Analyze OI changes for each strike
@@ -236,15 +242,7 @@ class TradingBotService:
             total_call_oi_change = 0
             total_put_oi_change = 0
 
-            logger.info(f"\n{'='*80}")
-            logger.info(f"📊 OI ANALYSIS DETAILS for {bot_id}")
-            logger.info(f"{'='*80}")
-            logger.info(f"Instrument: {instrument_key}")
-            logger.info(f"Expiry: {expiry_date}")
-            logger.info(f"ATM Strike: {atm_strike} | Spot Price: {spot_price}")
-            logger.info(f"Lookback Period: {lookback_minutes} minutes")
-            logger.info(f"Strikes Analyzed: {strikes_to_analyze}")
-            logger.info(f"{'='*80}\n")
+
 
             for strike in strikes_to_analyze:
                 analysis = self._analyze_strike_oi(
@@ -256,46 +254,33 @@ class TradingBotService:
                     total_put_oi_change += analysis.put_oi_change or 0
 
                     # Log detailed strike analysis
-                    atm_marker = " ⭐ ATM" if strike == atm_strike else ""
-                    logger.info(f"Strike {strike}{atm_marker}:")
-                    logger.info(
-                        f"  📞 CALL OI: {analysis.call_oi_previous:>10,} → {analysis.call_oi_current:>10,} | Change: {analysis.call_oi_change:>+10,} ({analysis.call_oi_change_percent:>+6.2f}%)"
-                        if analysis.call_oi_change is not None
-                        else f"  📞 CALL OI: {analysis.call_oi_current:>10,}"
-                    )
-                    logger.info(
-                        f"  📗 PUT  OI: {analysis.put_oi_previous:>10,} → {analysis.put_oi_current:>10,} | Change: {analysis.put_oi_change:>+10,} ({analysis.put_oi_change_percent:>+6.2f}%)"
-                        if analysis.put_oi_change is not None
-                        else f"  📗 PUT  OI: {analysis.put_oi_current:>10,}"
-                    )
-                    logger.info("")
 
-            # Calculate PCR (Put-Call Ratio)
-            pcr_oi = None
-            current_total_call_oi = sum(s.call_oi_current or 0 for s in strike_analyses)
-            current_total_put_oi = sum(s.put_oi_current or 0 for s in strike_analyses)
-            if current_total_call_oi > 0:
-                pcr_oi = round(current_total_put_oi / current_total_call_oi, 4)
 
-            logger.info(f"{'='*80}")
-            logger.info(f"📊 SUMMARY")
-            logger.info(f"{'='*80}")
-            logger.info(f"Total Call OI Change: {total_call_oi_change:>+15,}")
-            logger.info(f"Total Put  OI Change: {total_put_oi_change:>+15,}")
-            logger.info(
-                f"Net OI Change (Put - Call): {(total_put_oi_change - total_call_oi_change):>+15,}"
-            )
-            logger.info(f"Current Total Call OI: {current_total_call_oi:>15,}")
-            logger.info(f"Current Total Put  OI: {current_total_put_oi:>15,}")
-            logger.info(f"PCR (Put-Call Ratio): {pcr_oi if pcr_oi else 'N/A'}")
+            # Calculate PCR (Put-Call Ratio) - GLOBAL
+            pcr_oi = self._calculate_global_pcr(current_data)
+
+            # Calculate totals for analyzed strikes (for signal generation)
+            current_analyzed_call_oi = sum(s.call_oi_current or 0 for s in strike_analyses)
+            current_analyzed_put_oi = sum(s.put_oi_current or 0 for s in strike_analyses)
+
+            # logger.info(f"{'='*80}")
+            # logger.info(f"📊 SUMMARY")
+            # logger.info(f"{'='*80}")
+            # logger.info(f"Total Call OI Change: {total_call_oi_change:>+15,}")
+            # logger.info(f"Total Put  OI Change: {total_put_oi_change:>+15,}")
+            # logger.info(
+            #     f"Net OI Change (Put - Call): {(total_put_oi_change - total_call_oi_change):>+15,}"
+            # )
+            # logger.info(f"Analyzed Strikes Call OI: {current_analyzed_call_oi:>15,}")
+            # logger.info(f"Analyzed Strikes Put  OI: {current_analyzed_put_oi:>15,}")
+            # logger.info(f"Global PCR (All Strikes): {pcr_oi if pcr_oi else 'N/A'}")
 
             # Generate trading signal
             signal = self._generate_signal(
                 total_call_oi_change, total_put_oi_change, pcr_oi
             )
 
-            logger.info(f"\n🎯 SIGNAL: {signal}")
-            logger.info(f"{'='*80}\n")
+
 
             # Create analysis result
             result = OIAnalysisResult(
@@ -324,11 +309,15 @@ class TradingBotService:
                 },
             )
 
-            logger.info(
-                f"✅ OI Analysis complete for {bot_id} | Signal: {signal} | "
-                f"Call OI Change: {total_call_oi_change:+,} | "
-                f"Put OI Change: {total_put_oi_change:+,} | PCR: {pcr_oi}"
-            )
+            # Log analysis to Trade Decision Centre
+            from app.services.trade_decision_centre import trade_decision_centre
+            await trade_decision_centre.log_analysis(result)
+
+            # logger.info(
+            #     f"✅ OI Analysis complete for {bot_id} | Signal: {signal} | "
+            #     f"Call OI Change: {total_call_oi_change:+,} | "
+            #     f"Put OI Change: {total_put_oi_change:+,} | PCR: {pcr_oi}"
+            # )
 
             return result
 
@@ -596,6 +585,36 @@ class TradingBotService:
         except Exception as e:
             logger.error(f"❌ Error generating signal: {str(e)}")
             return "NEUTRAL"
+
+
+    def _calculate_global_pcr(self, option_chain_data: Dict[str, Any]) -> Optional[float]:
+        """
+        Calculate Put-Call Ratio (PCR) from the entire option chain
+        """
+        try:
+            data = option_chain_data.get("data", [])
+            if not data:
+                return None
+
+            total_call_oi = 0
+            total_put_oi = 0
+
+            for strike_data in data:
+                # Add Call OI
+                call_data = strike_data.get("call_options", {}).get("market_data", {})
+                total_call_oi += call_data.get("oi", 0) or 0
+
+                # Add Put OI
+                put_data = strike_data.get("put_options", {}).get("market_data", {})
+                total_put_oi += put_data.get("oi", 0) or 0
+
+            if total_call_oi > 0:
+                return round(total_put_oi / total_call_oi, 4)
+            return None
+
+        except Exception as e:
+            logger.error(f"❌ Error calculating global PCR: {str(e)}")
+            return None
 
 
 # Singleton instance
