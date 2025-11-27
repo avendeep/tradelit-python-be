@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     option_chain,
     trading_bot,
     scheduler,
+    candle_config,
 )
 
 api_router = APIRouter()
@@ -21,3 +22,6 @@ api_router.include_router(trading_bot.router)  # Trading bot endpoints
 api_router.include_router(
     scheduler.router, prefix="/scheduler", tags=["Scheduler"]
 )  # Scheduler management endpoints
+api_router.include_router(
+    candle_config.router, prefix="/candle-config", tags=["Candle Config"]
+)

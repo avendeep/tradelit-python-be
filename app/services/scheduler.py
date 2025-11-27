@@ -110,6 +110,7 @@ class SchedulerService:
         """
         from app.services.tasks.fetch_option_chain import fetch_option_chain_task
         from app.services.tasks.trading_bot_analysis import trading_bot_analysis_task
+        from app.services.tasks.fetch_intraday_candles import fetch_intraday_candles_task
 
         async def orchestrated_task_runner():
             """
@@ -139,6 +140,12 @@ class SchedulerService:
                 #     await another_dependent_task()
                 # except Exception as e:
                 #     logger.error(f"❌ Error in another_dependent_task: {str(e)}")
+
+                # Task 2b: Fetch Intraday Candles
+                try:
+                    await fetch_intraday_candles_task()
+                except Exception as e:
+                    logger.error(f"❌ Error in fetch_intraday_candles_task: {str(e)}")
 
                 logger.info("✅ All orchestrated tasks completed")
 

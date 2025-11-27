@@ -33,3 +33,53 @@ class UpstoxTokenModel(BaseModel):
                 "updated_at": "2025-11-19T17:55:27.192142",
             }
         }
+
+
+class IntradayCandleModel(BaseModel):
+    """Model for storing intraday candle data"""
+
+    instrument_key: str
+    interval: str  # e.g., "1minute", "10minute"
+    timestamp: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    oi: Optional[int] = 0
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "interval": "10minute",
+                "timestamp": "2025-11-20T10:15:00",
+                "open": 19800.5,
+                "high": 19850.0,
+                "low": 19780.0,
+                "close": 19820.0,
+                "volume": 0,
+                "oi": 0,
+                "updated_at": "2025-11-20T10:16:00",
+            }
+        }
+
+
+class CandleConfigurationModel(BaseModel):
+    """Model for storing candle configuration"""
+
+    id: str = Field(default="candle_config", alias="_id")
+    interval: str = "10minute"  # Default interval
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "_id": "candle_config",
+                "interval": "10minute",
+                "updated_at": "2025-11-20T10:00:00",
+            }
+        }

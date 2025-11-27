@@ -8,6 +8,7 @@ from app.db.mongodb import MongoDB
 from app.api.v1.router import api_router
 from app.services.upstox_service import upstox_service
 from app.services.scheduler import scheduler_service
+from app.services.candle_service import candle_service
 
 # Configure logging
 logging.basicConfig(
@@ -31,6 +32,10 @@ async def lifespan(app: FastAPI):
     scheduler_service.start()
     scheduler_service.register_tasks()
     print("⏰ Scheduler started with all tasks registered")
+
+    # Initialize candle configuration
+    interval = await candle_service.get_interval()
+    print(f"🕯️  Candle interval initialized to: {interval}")
 
     yield
     # Shutdown
