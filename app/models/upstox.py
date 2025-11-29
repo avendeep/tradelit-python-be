@@ -35,8 +35,55 @@ class UpstoxTokenModel(BaseModel):
         }
 
 
+class CandleData(BaseModel):
+    """Model for individual candle data point"""
+    timestamp: datetime
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    oi: Optional[int] = 0
+
+class DayWiseCandlesModel(BaseModel):
+    """Model for storing intraday candles grouped by day"""
+    
+    id: str = Field(alias="_id") # Format: {instrument_key}_{date}
+    instrument_key: str
+    date: str # YYYY-MM-DD
+    interval: str
+    candles: list[CandleData]
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "_id": "NSE_INDEX|Nifty 50_2025-11-20",
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "date": "2025-11-20",
+                "interval": "10minute",
+                "candles": [
+                    {
+                        "timestamp": "2025-11-20T10:15:00",
+                        "open": 19800.5,
+                        "high": 19850.0,
+                        "low": 19780.0,
+                        "close": 19820.0,
+                        "volume": 0,
+                        "oi": 0
+                    }
+                ],
+                "updated_at": "2025-11-20T10:16:00",
+            }
+        }
+
+
 class IntradayCandleModel(BaseModel):
-    """Model for storing intraday candle data"""
+    """
+    Legacy Model for storing intraday candle data
+    Kept for backward compatibility if needed, but new data uses DayWiseCandlesModel
+    """
 
     instrument_key: str
     interval: str  # e.g., "1minute", "10minute"

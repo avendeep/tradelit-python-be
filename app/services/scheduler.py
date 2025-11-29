@@ -111,6 +111,7 @@ class SchedulerService:
         from app.services.tasks.fetch_option_chain import fetch_option_chain_task
         from app.services.tasks.trading_bot_analysis import trading_bot_analysis_task
         from app.services.tasks.fetch_intraday_candles import fetch_intraday_candles_task
+        from datetime import datetime, time, timezone, timedelta
 
         async def orchestrated_task_runner():
             """
@@ -118,6 +119,21 @@ class SchedulerService:
             then executes dependent tasks only if data is successfully stored.
             """
             try:
+                # Time window check
+                # IST is UTC+5:30
+                ist_timezone = timezone(timedelta(hours=5, minutes=30))
+                now = datetime.now(ist_timezone)
+                current_time = now.time()
+                
+                start_time = time(9, 15)
+                end_time = time(15, 30)
+
+                if not (start_time <= current_time <= end_time):
+                    # Log only once per hour to avoid spamming, or just debug
+                    # For now, using debug to keep logs clean
+                    logger.debug(f"⏳ Outside trading hours ({start_time} - {end_time}). Current time: {current_time}. Skipping tasks.")
+                    return
+
                 logger.info("🚀 Starting orchestrated task execution...")
 
                 # Step 1: Fetch and store option chain data (PRIMARY TASK)

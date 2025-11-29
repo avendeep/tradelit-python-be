@@ -73,7 +73,7 @@ class CandleService:
         candles_data: List[List[Any]]
     ) -> int:
         """
-        Save candle data to database, updating existing records
+        Save candle data to database, grouped by day
         
         Args:
             instrument_key: Instrument key
@@ -89,9 +89,10 @@ class CandleService:
 
         try:
             collection = MongoDB.get_collection(self._data_collection)
-            count = 0
             
-            # Process each candle
+            # Group candles by date
+            candles_by_date: Dict[str, List[Dict[str, Any]]] = {}
+            
             for candle in candles_data:
                 # Upstox returns timestamp as string in ISO format
                 timestamp_str = candle[0]
@@ -101,34 +102,49 @@ class CandleService:
                     # Handle potential format differences
                     timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S%z").replace(tzinfo=None)
 
-                candle_model = IntradayCandleModel(
-                    instrument_key=instrument_key,
-                    interval=interval,
-                    timestamp=timestamp,
-                    open=float(candle[1]),
-                    high=float(candle[2]),
-                    low=float(candle[3]),
-                    close=float(candle[4]),
-                    volume=int(candle[5]),
-                    oi=int(candle[6]) if len(candle) > 6 else 0,
-                    updated_at=settings.now_naive()
-                )
+                date_str = timestamp.strftime("%Y-%m-%d")
                 
-                # Upsert based on instrument_key, interval, and timestamp
-                filter_query = {
+                candle_obj = {
+                    "timestamp": timestamp,
+                    "open": float(candle[1]),
+                    "high": float(candle[2]),
+                    "low": float(candle[3]),
+                    "close": float(candle[4]),
+                    "volume": int(candle[5]),
+                    "oi": int(candle[6]) if len(candle) > 6 else 0
+                }
+                
+                if date_str not in candles_by_date:
+                    candles_by_date[date_str] = []
+                
+                candles_by_date[date_str].append(candle_obj)
+
+            total_saved = 0
+            
+            # Save each day's candles as a single document
+            for date_str, daily_candles in candles_by_date.items():
+                doc_id = f"{instrument_key}_{date_str}"
+                
+                # Sort candles by timestamp to ensure order
+                daily_candles.sort(key=lambda x: x["timestamp"])
+                
+                day_wise_model = {
+                    "_id": doc_id,
                     "instrument_key": instrument_key,
+                    "date": date_str,
                     "interval": interval,
-                    "timestamp": timestamp
+                    "candles": daily_candles,
+                    "updated_at": settings.now_naive()
                 }
                 
                 await collection.replace_one(
-                    filter_query,
-                    candle_model.model_dump(by_alias=True),
+                    {"_id": doc_id},
+                    day_wise_model,
                     upsert=True
                 )
-                count += 1
+                total_saved += len(daily_candles)
                 
-            return count
+            return total_saved
 
         except Exception as e:
             logger.error(f"❌ Error saving candles for {instrument_key}: {str(e)}")
