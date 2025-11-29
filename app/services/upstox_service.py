@@ -347,5 +347,63 @@ class UpstoxService:
             return None
 
 
+    async def get_historical_candles(
+        self, instrument_key: str, interval: str, to_date: str, from_date: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get historical candle data for an instrument (v3 API)
+        
+        Args:
+            instrument_key: Key of the instrument
+            interval: Candle interval (e.g., '1minute', '10minute', '1day')
+            to_date: End date in YYYY-MM-DD format
+            from_date: Start date in YYYY-MM-DD format
+            
+        Returns:
+            Candle data or None if request fails
+        """
+        if not self.is_token_valid():
+            raise Exception("Not authenticated. Please login first.")
+
+        # Parse interval string to v3 format
+        interval_type = "minutes"
+        interval_value = "1"
+
+        if "minute" in interval:
+            interval_type = "minutes"
+            interval_value = interval.replace("minute", "")
+        elif "hour" in interval:
+            interval_type = "hours"
+            interval_value = interval.replace("hour", "")
+        elif "day" in interval:
+            interval_type = "days"
+            interval_value = interval.replace("day", "")
+        elif "week" in interval:
+            interval_type = "weeks"
+            interval_value = interval.replace("week", "")
+        elif "month" in interval:
+            interval_type = "months"
+            interval_value = interval.replace("month", "")
+
+        # Upstox API endpoint for historical candles (v3)
+        # https://api.upstox.com/v3/historical-candle/{instrumentKey}/{interval}/{intervalValue}/{to_date}/{from_date}
+        url = f"https://api.upstox.com/v3/historical-candle/{instrument_key}/{interval_type}/{interval_value}/{to_date}/{from_date}"
+
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self._access_token}",
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching historical candles: {str(e)}")
+            if hasattr(e.response, "text"):
+                print(f"Response: {e.response.text}")
+            return None
+
+
 # Singleton instance
 upstox_service = UpstoxService()
