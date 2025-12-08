@@ -119,20 +119,25 @@ class SchedulerService:
             then executes dependent tasks only if data is successfully stored.
             """
             try:
-                # Time window check
-                # IST is UTC+5:30
-                ist_timezone = timezone(timedelta(hours=5, minutes=30))
-                now = datetime.now(ist_timezone)
-                current_time = now.time()
+                from app.core.config import settings
                 
-                start_time = time(9, 15)
-                end_time = time(15, 30)
+                # Time window check (can be disabled for development)
+                if not settings.SKIP_TIME_CONSTRAINT:
+                    # IST is UTC+5:30
+                    ist_timezone = timezone(timedelta(hours=5, minutes=30))
+                    now = datetime.now(ist_timezone)
+                    current_time = now.time()
+                    
+                    start_time = time(9, 15)
+                    end_time = time(15, 30)
 
-                if not (start_time <= current_time <= end_time):
-                    # Log only once per hour to avoid spamming, or just debug
-                    # For now, using debug to keep logs clean
-                    logger.debug(f"⏳ Outside trading hours ({start_time} - {end_time}). Current time: {current_time}. Skipping tasks.")
-                    return
+                    if not (start_time <= current_time <= end_time):
+                        # Log only once per hour to avoid spamming, or just debug
+                        # For now, using debug to keep logs clean
+                        logger.debug(f"⏳ Outside trading hours ({start_time} - {end_time}). Current time: {current_time}. Skipping tasks.")
+                        return
+                else:
+                    logger.info("⚙️ SKIP_TIME_CONSTRAINT is enabled - running analysis outside trading hours")
 
                 logger.info("🚀 Starting orchestrated task execution...")
 

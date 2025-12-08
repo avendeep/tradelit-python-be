@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "TradeLit"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
+    SKIP_TIME_CONSTRAINT: bool = True  # Set to True to run analysis outside 9:15 AM - 3:30 PM trading hours
 
     # API Configuration
     API_V1_PREFIX: str = "/api/v1"

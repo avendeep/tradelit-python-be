@@ -207,7 +207,7 @@ class TradingBotService:
             strikes_range = bot.get("strikes_range", 3)
 
 
-
+            print(instrument_key, expiry_date, lookback_minutes, strikes_range)
             # Get current and historical option chain data
             current_data = await self._get_latest_snapshot(instrument_key, expiry_date)
             if not current_data:
