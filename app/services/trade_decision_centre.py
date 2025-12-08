@@ -7,6 +7,8 @@ import logging
 from typing import Any, Dict
 from app.schemas.trading_bot import OIAnalysisResult
 
+from app.services.signal_analysis import analyze_trade_signal
+
 logger = logging.getLogger(__name__)
 
 class TradeDecisionCentre:
@@ -25,11 +27,15 @@ class TradeDecisionCentre:
             analysis: The analysis result from a trading bot.
         """
         try:
+            # Calculate signal using the new service
+            trade_signal = analyze_trade_signal(analysis)
+            
             logger.info(f"\n{'='*80}")
             logger.info(f"🏢 TRADE DECISION CENTRE RECEIVED ANALYSIS")
             logger.info(f"{'='*80}")
             logger.info(f"Bot ID: {analysis.instrument_key}") # Using instrument key as proxy for bot source for now
-            logger.info(f"Signal: {analysis.signal}")
+            logger.info(f"Bot Signal: {analysis.signal}")
+            logger.info(f"TDC Signal: {trade_signal}")
             logger.info(f"PCR: {analysis.pcr_oi}")
             logger.info(f"Call OI Change: {analysis.total_call_oi_change}")
             logger.info(f"Put OI Change: {analysis.total_put_oi_change}")

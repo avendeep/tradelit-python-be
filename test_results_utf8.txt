@@ -1,0 +1,7 @@
+Case 1 (Bullish Push, PCR>1): BULLISH PUSH - PASS
+Case 2 (Bearish Push, PCR<1): BEARISH PUSH - PASS
+Case 3 (Bullish Accum, PCR>1): BULLISH ACCUMULATION - PASS
+Case 4 (Bearish Accum, PCR<1): BEARISH ACCUMULATION - PASS
+Case 5 (PCR=1): NO TRADE/NEUTRAL MARKET - PASS
+Case 6 (PCR<1, Bullish Signal): NO SIGNAL (PCR < 1 but Signal not Bearish) - PASS
+Case 7 (PCR>1, Bearish Signal): NO SIGNAL (PCR > 1 but Signal not Bullish) - PASS
