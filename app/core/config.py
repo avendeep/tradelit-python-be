@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "TradeLit"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    SKIP_TIME_CONSTRAINT: bool = True  # Set to True to run analysis outside 9:15 AM - 3:30 PM trading hours
+    SKIP_TIME_CONSTRAINT: bool = False  # Set to True to run analysis outside 9:15 AM - 3:30 PM trading hours
 
     # API Configuration
     API_V1_PREFIX: str = "/api/v1"
@@ -34,6 +34,14 @@ class Settings(BaseSettings):
 
     # Timezone Configuration
     TIMEZONE: str = "Asia/Kolkata"  # Indian Standard Time (IST)
+
+    # Email Configuration
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = "pradeepg63@gmail.com"
+    SMTP_PASSWORD: str = "fwrtnvonstjndjnh"
+    EMAIL_FROM: str = "pradeepg63@gmail.com"
+    EMAIL_TO: str = "pradeepg63@gmail.com"  # Comma separated string for multiple recipients
 
     class Config:
         env_file = ".env"

@@ -2,7 +2,7 @@
 Trading Bot API endpoints
 """
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks
 from typing import Dict, Any
 
 from app.schemas.trading_bot import (
@@ -172,7 +172,7 @@ async def list_active_bots():
 
 
 @router.post("/analyze/{bot_id}", response_model=OIAnalysisResult)
-async def trigger_analysis(bot_id: str):
+async def trigger_analysis(bot_id: str, background_tasks: BackgroundTasks):
     """
     Manually trigger OI analysis for a bot
 
@@ -181,12 +181,13 @@ async def trigger_analysis(bot_id: str):
 
     Args:
         bot_id: Unique identifier of the bot
+        background_tasks: FastAPI BackgroundTasks object
 
     Returns:
         OI analysis result
     """
     try:
-        result = await trading_bot_service.analyze_oi_changes(bot_id)
+        result = await trading_bot_service.analyze_oi_changes(bot_id, background_tasks=background_tasks)
 
         if not result:
             raise HTTPException(

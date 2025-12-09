@@ -6,6 +6,7 @@ Analyzes Open Interest changes for strike prices around ATM
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any, Tuple
+from fastapi import BackgroundTasks
 
 from app.db.mongodb import MongoDB
 from app.models.trading import TradingBotModel
@@ -182,12 +183,13 @@ class TradingBotService:
             logger.error(f"❌ Error fetching active bots: {str(e)}")
             return []
 
-    async def analyze_oi_changes(self, bot_id: str) -> Optional[OIAnalysisResult]:
+    async def analyze_oi_changes(self, bot_id: str, background_tasks: Optional[BackgroundTasks] = None) -> Optional[OIAnalysisResult]:
         """
         Analyze OI changes for a specific bot
 
         Args:
             bot_id: Bot identifier
+            background_tasks: FastAPI BackgroundTasks object (optional)
 
         Returns:
             OI analysis result or None if analysis failed
@@ -311,13 +313,13 @@ class TradingBotService:
 
             # Log analysis to Trade Decision Centre
             from app.services.trade_decision_centre import trade_decision_centre
-            await trade_decision_centre.log_analysis(result)
+            await trade_decision_centre.log_analysis(result, background_tasks=background_tasks)
 
-            # logger.info(
-            #     f"✅ OI Analysis complete for {bot_id} | Signal: {signal} | "
-            #     f"Call OI Change: {total_call_oi_change:+,} | "
-            #     f"Put OI Change: {total_put_oi_change:+,} | PCR: {pcr_oi}"
-            # )
+            logger.info(
+                f"✅ OI Analysis complete for {bot_id} | Signal: {signal} | "
+                f"Call OI Change: {total_call_oi_change:+,} | "
+                f"Put OI Change: {total_put_oi_change:+,} | PCR: {pcr_oi}"
+            )
 
             return result
 
