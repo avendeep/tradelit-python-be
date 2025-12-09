@@ -262,3 +262,32 @@ class OIAnalysisLogModel(BaseModel):
     )
     analysis_result: dict = Field(..., description="Complete analysis result")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DailySignalCountModel(BaseModel):
+    """Database model for storing daily signal counts"""
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        populate_by_name=True,
+        json_encoders={ObjectId: str},
+        json_schema_extra={
+            "example": {
+                "date": "2024-03-20",
+                "instrument_key": "NSE_INDEX|Nifty 50",
+                "bullish_push_count": 5,
+                "bullish_accumulation_count": 2,
+                "bearish_push_count": 3,
+                "bearish_accumulation_count": 1,
+            }
+        },
+    )
+
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    date: str = Field(..., description="Date of the count (YYYY-MM-DD)")
+    instrument_key: str = Field(..., description="Instrument Key")
+    bullish_push_count: int = Field(default=0, description="Count of Bullish Push signals")
+    bullish_accumulation_count: int = Field(default=0, description="Count of Bullish Accumulation signals")
+    bearish_push_count: int = Field(default=0, description="Count of Bearish Push signals")
+    bearish_accumulation_count: int = Field(default=0, description="Count of Bearish Accumulation signals")
+    last_updated_at: datetime = Field(default_factory=datetime.utcnow)
